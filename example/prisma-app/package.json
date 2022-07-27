@@ -1,0 +1,17 @@
+{
+  "name": "prisma-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "prebuild": "smuggler copy",
+    "build": "dothebuild",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@briandlee/smuggler": "^0.1.1"
+  }
+}

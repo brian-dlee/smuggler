@@ -1,0 +1,5 @@
+{
+  "encryptionKeyEnvironmentVariable": "VERCEL_ENCRYPTION_KEY",
+  "encryptionIVEnvironmentVariable": "VERCEL_ENCRYPTION_IV",
+  "includeVariablePrefix": "VERCEL_SECRET__"
+}
