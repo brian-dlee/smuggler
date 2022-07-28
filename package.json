@@ -3,8 +3,8 @@
   "repository": {
     "url": "https://github.com/brian-dlee/smuggler"
   },
-  "version": "0.1.5",
-  "description": "",
+  "version": "0.1.6",
+  "description": "Smuggle large configuration variables into Vercel deployments in an encrypted format.",
   "main": "./dist/index.js",
   "bin": {
     "smuggler": "./dist/cli.js"
@@ -21,8 +21,17 @@
     "build": "tsc",
     "test": "jest"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "vercel",
+    "prisma",
+    "cloud sql",
+    "ssl",
+    "encryption",
+    "4kb",
+    "environment variable",
+    "secrets"
+  ],
+  "author": "Brian Lee <briandl92391@gmail.com>",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^27.4.1",
