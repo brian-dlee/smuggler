@@ -5,8 +5,8 @@ import {
   getDefaultBuildLocation,
   getFilePath,
 } from './crypto';
-import { accessSync, readFileSync, constants } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
+import { accessSync, readFileSync, constants } from 'fs';
+import { access, readFile } from 'fs/promises';
 
 interface ReadOptions extends CryptographicParameters {
   path?: string;
@@ -46,9 +46,9 @@ export async function read(options: ReadOptions) {
   const filePath = options.path || getFilePath(getDefaultBuildLocation());
 
   try {
-    console.error('Could not locate data file:', filePath);
     await access(filePath, constants.F_OK);
   } catch (e) {
+    console.error('Could not locate data file:', filePath);
     throw new Error('the file path provided does not exist');
   }
 

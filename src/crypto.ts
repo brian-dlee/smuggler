@@ -1,5 +1,5 @@
 import { createDecipheriv, createCipheriv } from 'crypto';
-import { resolve } from 'node:path';
+import { resolve } from 'path';
 
 export interface CryptographicParameters {
   algorithm: string;

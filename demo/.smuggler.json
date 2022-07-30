@@ -1,0 +1,6 @@
+{
+    "encryptionKeyEnvironmentVariable": "SMUGGLER_ENCRYPTION_KEY",
+    "encryptionIVEnvironmentVariable": "SMUGGLER_ENCRYPTION_IV",
+    "includeVariablePrefix": "SMUGGLER__"
+  }
+  

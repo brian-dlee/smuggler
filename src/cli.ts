@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { constants } from 'node:fs';
-import { access, mkdir, writeFile, readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { constants } from 'fs';
+import { access, mkdir, writeFile, readFile } from 'fs/promises';
+import { dirname, resolve } from 'path';
+import * as dotenv from 'dotenv'
 import {
   createTransform,
   CryptographicParameters,
@@ -34,6 +35,8 @@ async function encryptToFile(
     createTransform('encrypt', parameters)(Buffer.from(JSON.stringify(variables)))
   );
 }
+
+dotenv.config()
 
 const [operation] = process.argv.slice(2);
 
@@ -97,6 +100,7 @@ async function readConfig() {
       'from variables matching',
       config.includeVariablePrefix
     );
+    await mkdir(config.intermediateLocation, { recursive: true });
     return encryptToFile(
       extractSecrets(mappers.prefix(config.includeVariablePrefix), process.env),
       intermediateFilePath,
