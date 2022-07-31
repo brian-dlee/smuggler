@@ -1,4 +1,4 @@
-import init from './config';
+import init from './config.server';
 
 /* eslint-disable import/first */
 init();
