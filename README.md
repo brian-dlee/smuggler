@@ -62,7 +62,7 @@ venturing down this avenue you've probably found you need to run custom CI calli
 This step creates the encrypted data in the intermediate storage location.
 
 ```shell
-npx -y @briandlee/smuggler create
+npx -y @briandlee/smuggler prepare
 ```
 
 ### Add `smuggler create` to your build phase
@@ -78,7 +78,7 @@ A good place for this is in `prebuild` in your `package.json`.
 
 > I also add it to `predev` to assist developers.
 
-### Load the configuration at startup
+### Load the configuration at runtime
 
 The data is pre-processed into source code at build time (when smuggler create is ran). Calling read will call this
 compiled loader, decode the data and return it. In many cases, you may want to cache this result so you do not end
