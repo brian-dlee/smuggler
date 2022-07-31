@@ -26,3 +26,7 @@ body {
   text-overflow: ellipsis;
   padding: 0.5rem;
 }
+
+.main .links {
+  text-align: center;
+}

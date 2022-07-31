@@ -71,6 +71,12 @@ export default function Index() {
         limit that can be passed through like you normally would.
       </p>
       <pre>{JSON.stringify({ ...env, ...config }, null, 2)}</pre>
+      <hr />
+      <div className="links">
+        <a href="https://github.com/brian-dlee/smuggler">View brian-dlee/smuggler on GitHub</a>
+        {` | `}
+        <a href="https://npmjs.com/@briandlee/smuggler">View @briandlee/smuggler on NPM</a>
+      </div>
     </div>
   );
 }
