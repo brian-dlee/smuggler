@@ -3,10 +3,10 @@
 ### The quick version
 
 1. Download environment variables or secrets from a secret storage provider
-2. Preprocess variables and generate smuggler data
+2. Preprocess variables and generate smuggler data files
 3. Upload the build to Vercel with smuggler data and remainder of environment variables kept as standard environment variables
-4. In Vercel's build phase, copy smuggler data into node_modules (so they are kept in Serverless functions environment)
-5. At runtime, use smuggler to read smuggler data
+4. In Vercel's build phase, compile smuggler data into node_modules (so they are kept in Serverless functions environment)
+5. At runtime, use smuggler to read the encrypted data
 
 ### The long version
 
