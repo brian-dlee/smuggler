@@ -62,7 +62,7 @@ venturing down this avenue you've probably found you need to run custom CI calli
 This step creates the encrypted data in the intermediate storage location.
 
 ```shell
-npx -y @briandlee/smuggler create
+npx -y @briandlee/smuggler prepare
 ```
 
 ### Add `smuggler create` to your build phase
