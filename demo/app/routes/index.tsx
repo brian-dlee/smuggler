@@ -1,7 +1,8 @@
-import type { LoaderFunction } from '@remix-run/node';
+import type { LoaderFunction, LinksFunction } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { useLoaderData } from '@remix-run/react';
 import { load } from '~/lib/config.server';
+import mainStyleSheetUrl from '~/styles/main.css';
 
 interface LoaderData {
   config: Record<string, string>;
@@ -18,6 +19,10 @@ function pick(
     })
   );
 }
+
+export const links: LinksFunction = () => {
+  return [{ rel: 'stylesheet', href: mainStyleSheetUrl }];
+};
 
 export const loader: LoaderFunction = async () => {
   try {
@@ -43,9 +48,28 @@ export default function Index() {
   const { config, env } = useLoaderData<LoaderData>();
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', lineHeight: '1.4' }}>
+    <div className="main" style={{ fontFamily: 'system-ui, sans-serif', lineHeight: '1.4' }}>
       <h1>Smuggler Demo</h1>
-      {config.FILE_BASE64 && <img src={`data:image/webp;base64,${config.FILE_BASE64}`} />}
+      <p>
+        Using Smuggler, an image (in base64 format) is passed through to the deployment. This file
+        is WAY beyond the 4kb total size restriction Vercel has on environment variables. Now, I
+        don't think anyone will be using smuggler to get an environment variable containing a
+        picture of Charlie Day deployed, but it'll do the trick for any files that break that 4kb
+        limit. It doesn't discriminate.
+      </p>
+      {config.FILE_BASE64 && (
+        <div className="image-container">
+          <img alt="it's been smuggled" src={`data:image/webp;base64,${config.FILE_BASE64}`} />
+        </div>
+      )}
+      <p>
+        And just to demonstrate that everything else is still intact, here are the other environment
+        variables. This includes the Smuggler vars themselves, the <code>FILE_BASE64</code>{' '}
+        (injected into process.env by <code>src/lib/config.server.ts:initialize</code>), and another
+        environment variable completely untouched by Smuggler <code>API_KEY</code>.{' '}
+        <code>API_KEY</code> represents all those environment variables which are well below the 4kb
+        limit that can be passed through like you normally would.
+      </p>
       <pre>{JSON.stringify({ ...env, ...config }, null, 2)}</pre>
     </div>
   );
