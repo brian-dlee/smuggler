@@ -4,6 +4,7 @@
   "compilerOptions": {
     "typeRoots": [
       "local-types",
+      "./node_modules/@types"
     ],
     "paths": {
       ".smuggler": ["./local-types/.smuggler.d.ts"],
