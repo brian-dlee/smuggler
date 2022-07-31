@@ -3,7 +3,7 @@
   "repository": {
     "url": "https://github.com/brian-dlee/smuggler"
   },
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Smuggle large configuration variables into Vercel deployments in an encrypted format.",
   "main": "./dist/index.js",
   "bin": {
@@ -14,10 +14,13 @@
     ".": "./dist/index.js"
   },
   "files": [
-    "dist/**/*"
+    "dist",
+    "resources",
+    "scripts"
   ],
   "scripts": {
-    "start": "ts-node ./src/index.ts",
+    "postinstall": "node scripts/postinstall.js",
+    "start": "ts-node ./src/cli.ts",
     "build": "tsc",
     "test": "jest"
   },
@@ -34,6 +37,7 @@
   "author": "Brian Lee <briandl92391@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/debug": "^4.1.7",
     "@types/jest": "^27.4.1",
     "@types/node": "^17.0.45",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
@@ -55,6 +59,8 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "commander": "^9.4.0",
+    "debug": "^4.3.4",
     "dotenv": "^16.0.1"
   }
 }

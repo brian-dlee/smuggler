@@ -1,5 +1,6 @@
-import { createDecipheriv, createCipheriv } from 'crypto';
-import { resolve } from 'path';
+import { createCipheriv, createDecipheriv } from 'crypto';
+import { resolve } from './path';
+import { GENERATED_PACKAGE_NAME, LOADER_FILENAME } from './constants';
 
 export interface CryptographicParameters {
   algorithm: string;
@@ -8,8 +9,6 @@ export interface CryptographicParameters {
 }
 
 export type CryptographicFunction = (data: Buffer) => Buffer;
-
-export const DEFAULT_ALGORITHM = 'aes-128-cbc';
 
 export function createTransform(
   type: 'encrypt' | 'decrypt',
@@ -31,13 +30,13 @@ export function createTransform(
 }
 
 export function getFilePath(location: string): string {
-  return resolve(location, 'data.enc');
+  return resolve(location, LOADER_FILENAME);
 }
 
 export function getDefaultIntermediateLocation(): string {
-  return resolve('.smuggler');
+  return resolve(GENERATED_PACKAGE_NAME);
 }
 
 export function getDefaultBuildLocation(): string {
-  return resolve('node_modules', '.smuggler');
+  return resolve('node_modules', GENERATED_PACKAGE_NAME);
 }

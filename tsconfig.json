@@ -2,6 +2,12 @@
   "include": ["src"],
   "exclude": ["jest.config.ts","**/*.test.ts"],
   "compilerOptions": {
+    "typeRoots": [
+      "local-types",
+    ],
+    "paths": {
+      ".smuggler": ["./local-types/.smuggler.d.ts"],
+    },
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 
     /* Projects */

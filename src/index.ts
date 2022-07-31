@@ -1,12 +1,7 @@
-import {
-  createTransform,
-  CryptographicParameters,
-  DEFAULT_ALGORITHM,
-  getDefaultBuildLocation,
-  getFilePath,
-} from './crypto';
-import { accessSync, readFileSync, constants } from 'fs';
-import { access, readFile } from 'fs/promises';
+import debug from 'debug';
+import { loader } from '.smuggler';
+import { CryptographicParameters, getDefaultBuildLocation, getFilePath } from './crypto';
+import { DEFAULT_ALGORITHM } from './constants';
 
 interface ReadOptions extends CryptographicParameters {
   path?: string;
@@ -17,9 +12,7 @@ type RequiredOptionNames = 'key' | 'iv';
 type MinimalOptions = Partial<Omit<ReadOptions, RequiredOptionNames>> &
   Pick<ReadOptions, RequiredOptionNames>;
 
-function readInternal(options: ReadOptions, buffer: Buffer): any {
-  return JSON.parse(createTransform('decrypt', options)(buffer).toString('utf-8'));
-}
+const debugLogger = debug('smuggler:index');
 
 export function withDefaultReadOptions(options: MinimalOptions): ReadOptions {
   return {
@@ -29,28 +22,6 @@ export function withDefaultReadOptions(options: MinimalOptions): ReadOptions {
   };
 }
 
-export function readSync(options: ReadOptions) {
-  const filePath = options.path || getFilePath(getDefaultBuildLocation());
-
-  try {
-    accessSync(filePath, constants.F_OK);
-  } catch (e) {
-    console.error('Could not locate data file:', filePath);
-    throw new Error('the file path provided does not exist');
-  }
-
-  return readInternal(options, readFileSync(filePath));
-}
-
-export async function read(options: ReadOptions) {
-  const filePath = options.path || getFilePath(getDefaultBuildLocation());
-
-  try {
-    await access(filePath, constants.F_OK);
-  } catch (e) {
-    console.error('Could not locate data file:', filePath);
-    throw new Error('the file path provided does not exist');
-  }
-
-  return readInternal(options, await readFile(filePath));
+export function read(options: ReadOptions) {
+  return loader(options.algorithm, options.key, options.iv);
 }

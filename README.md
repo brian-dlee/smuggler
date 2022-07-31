@@ -18,6 +18,12 @@ files behind when the final product is uploaded.
 In an attempt to address this with my own organization and provide a stable solution for others to use, `smuggler`
 was created.
 
+## Live demo
+
+Take a look at the live demo at https://smuggler.brian-dlee.dev. 
+
+The code is in the [demo directory](demo).
+
 ## Getting started
 
 ```shell
@@ -43,13 +49,15 @@ and `iv` parameters to be 16 character secrets.
 }
 ```
 
-### Execute `smuggler create` during your build phase
+### Execute `smuggler prepare` during your CI's build phase
 
 All necessary variables must be available during the build phase. With Vercel's CLI you can use `-b` or `--build-env`
 to create them for the build phase only.
 
-> Most deployments might happen solely on Vercel's end with a Git integration, but the execution is broken into 2 phases
-> so it can be executed in multiple phase if necessary
+Most deployments might happen solely on Vercel's end with a Git integration, but this won't work if you have environment
+variables exceeding 4KB because there is no where to add them unless they are in version control. If you are
+venturing down this avenue you've probably found you need to run custom CI calling Vercel's CLI when necessary.
+`prepare` should be used during this phase prior to calling Vercel's CLI to commence the build.
 
 This step creates the encrypted data in the intermediate storage location.
 
@@ -57,7 +65,7 @@ This step creates the encrypted data in the intermediate storage location.
 npx -y @briandlee/smuggler create
 ```
 
-### Add `smuggler copy` to your build phase
+### Add `smuggler create` to your build phase
 
 This step copies configuration from the intermediate storage location to the build storage location
 
@@ -65,44 +73,29 @@ A good place for this is in `prebuild` in your `package.json`.
 
 ```json
   "scripts": {
-    "prebuild": "smuggler copy",
+    "prebuild": "smuggler create",
 ```
+
+> I also add it to `predev` to assist developers.
 
 ### Load the configuration at startup
 
-**Synchronous**
+The data is pre-processed into source code at build time (when smuggler create is ran). Calling read will call this
+compiled loader, decode the data and return it. In many cases, you may want to cache this result so you do not end
+up decoding data multiple times during your apps execution unless you are worried about the vulnerability of holding
+secret data in memory or if your config data is really large.
 
-These APIs are available if you need to load secrets when the serverless function starts up and need to access
-variables synchronously. In the case of Prisma, the variables will need to be read and written to tmp files immediately 
-so the instance is prepared to handle any incoming requests.
+Your key and iv values must be available for read to work.
 
 ```typescript
-import { readSync, withDefaultReadOptions } from '@briandlee/smuggler';
+import { read, withDefaultReadOptions } from '@briandlee/smuggler';
 
-const data = readSync(withDefaultReadOptions({ 
+const data = read(withDefaultReadOptions({ 
   key: process.env.VERCEL_ENCRYPTION_KEY, 
   iv: process.env.VERCEL_ENCRYPTION_IV 
 }));
 ```
 
-**Asynchronous**
-
-If you are serving configuration to your frontend, you'll likely hook up to an API endpiont. In this case (and probably most cases),
-when you want to avoid synchronous calls and these functions can be used. 
-
-```typescript
-import { read, withDefaultReadOptions } from '@briandlee/smuggler';
-
-async function handle() {
-  return json(
-    await read(withDefaultReadOptions({
-      key: process.env.VERCEL_ENCRYPTION_KEY,
-      iv: process.env.VERCEL_ENCRYPTION_IV
-    }))
-  );
-}
-```
-   
 ### The author's use case
 
 See the [example](example/prisma-app) for an illustration for how the package is designed to be used.
@@ -112,12 +105,11 @@ See the [example](example/prisma-app) for an illustration for how the package is
 - At the time of writing this, I'm using Remix. If you are using another framework that uses a different build system 
   you encounter a situation where the smuggler data is pruned from the final build (maybe in the case of Next.js and 
   their use of [nft](https://github.com/vercel/nft)).
-- I'm using the Vercel CLI to deploy my builds instead of a git-based trigger. I like the control this provides when 
-  linking to the rest of my organizations CI. If you use a git-based trigger and don't have a place to pre-process your 
-  environment variables it should still work, but you'll probably find that the 2-step (create then copy) steps are unnecessary. 
-  I've added a TODO to the project that I can add if someone else finds use of this project.
 
 ## TODO
 
- - [ ] Make intermediate phase optional
  - [ ] Support additional encryption methods
+
+----
+
+Made by [me](https://brian-dlee.dev).

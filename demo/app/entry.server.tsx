@@ -6,8 +6,8 @@ import { initialize } from "./lib/config.server"
 
 initialize()
 
-// While it's ridiculous to load an image synchronously during startup...
-invariant(process.env.FILE_BASE64, 'The super secret and necessarily file is missing')
+// While it's a little ridiculous to load an image synchronously during startup...
+invariant(process.env.FILE_BASE64, 'The super secret and necessary file is missing')
 console.log(`Loaded secret image. Size=${Buffer.byteLength(Buffer.from(process.env.FILE_BASE64, 'base64')) / 1000}kb`)
 
 export default function handleRequest(
