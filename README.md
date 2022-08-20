@@ -18,6 +18,10 @@ files behind when the final product is uploaded.
 In an attempt to address this with my own organization and provide a stable solution for others to use, `smuggler`
 was created.
 
+This package may also help with the common issue of injecting GOOGLE_APPLICATION_CREDENTIALS (the path to 
+a Google service account credentials JSON file) or a Firebase credentials file into your application. See 
+the "The author's use case" below.
+
 ## Live demo
 
 Take a look at the live demo at https://smuggler.brian-dlee.dev. 
@@ -30,7 +34,47 @@ The code is in the [demo directory](demo).
 npm i --save @briandlee/smuggler
 ```
 
-### Create your config file
+## Config File: `.smuggler.json`
+
+The following properties are allows in the config file. 
+
+_Note: if neither `includeVariablePrefix` or `includeFiles` are supplied, there is nothing for Smuggler to do._
+
+| option                             | required | description                                               |
+|------------------------------------|----------|-----------------------------------------------------------|
+| `encryptionKeyEnvironmentVariable` | yes      | The environment variable that contains the encryption key | 
+| `encryptionIVEnvironmentVariable`  | yes      | The environment variable that contains the encryption iv  |
+| `includeVariablePrefix`            | no       | A prefix used to match environment variables to smuggle   |
+| `includeFiles`                     | no       | A list of files to smuggle (as base64)                    |
+
+## CLI
+
+### Operation: `prepare`
+
+Use `prepare` to store environment variables and files into an encrypted file that can be uploaded as part of 
+your deployment.
+
+This is part of step-1, in a 2 phase deployment. During part 1, expose sensitive variables to the build
+environment where they can be read and exported in an encrypted format before being uploaded to the build system
+(i.e. Vercel) to be packaged with the application during the application build phase.
+
+### Operation: `generate`
+
+Use `generate` to convert prepared data from phase 1 into application files that can be bundled with your application.
+Without this step, the encoded variables do not become part of the application and will be shaken as part of builder
+optimization. If you did not prepare the data beforehand, this step can also do both the preparation and generation.
+
+It's important to run this step as part of the normal development process. Without the generated files that result
+from this step, the application will not run if smuggler is invoked. Even an empty generated file will close 
+the circuit. A common remedy is to include `smuggler generate` as part of `prestart` in your package.json.
+
+### Operation: `read`
+
+Use `read` to inspect the contents of data resulting from the `prepare` step. This is only used a debugging tool.
+
+## Following the author's use case
+
+### Creating the config file
 
 In my case, I prefix variables I want to feed into `smuggler` with `VERCEL_SECRET__`, and I store the `key` and `iv`
 parameters for encryption/decryption in the variables `VERCEL_ENCRYPTION_KEY` and `VERCEL_ENCRYPTION_IV` as recommended
@@ -45,7 +89,10 @@ and `iv` parameters to be 16 character secrets.
 {
   "encryptionKeyEnvironmentVariable": "VERCEL_ENCRYPTION_KEY",
   "encryptionIVEnvironmentVariable": "VERCEL_ENCRYPTION_IV",
-  "includeVariablePrefix": "VERCEL_SECRET__"
+  "includeVariablePrefix": "VERCEL_SECRET__",
+  "includeFiles": [
+    { "type": "variable", "name":  "GOOGLE_APPLICATION_CREDENTIALS", "variable": "GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_JSON_BASE64" }
+  ]
 }
 ```
 
@@ -61,11 +108,13 @@ venturing down this avenue you've probably found you need to run custom CI calli
 
 This step creates the encrypted data in the intermediate storage location.
 
+_Note: All variables you intend to inject into your build must be available during the `prepare` phase_
+
 ```shell
 npx -y @briandlee/smuggler prepare
 ```
 
-### Add `smuggler create` to your build phase
+### Add `smuggler generate` to your build phase
 
 This step copies configuration from the intermediate storage location to the build storage location
 
@@ -73,10 +122,10 @@ A good place for this is in `prebuild` in your `package.json`.
 
 ```json
   "scripts": {
-    "prebuild": "smuggler create",
+    "prebuild": "smuggler generate",
 ```
 
-> I also add it to `predev` to assist developers.
+> I also add it to `prestart` so the necessary files for startup with smuggler are always present.
 
 ### Load the configuration at runtime
 
@@ -88,23 +137,35 @@ secret data in memory or if your config data is really large.
 Your key and iv values must be available for read to work.
 
 ```typescript
+import { writeFileSync } from "fs";
 import { read, withDefaultReadOptions } from '@briandlee/smuggler';
+import { randomString } from "~/utils/my-random-lib"
 
-const data = read(withDefaultReadOptions({ 
-  key: process.env.VERCEL_ENCRYPTION_KEY, 
-  iv: process.env.VERCEL_ENCRYPTION_IV 
+const data = read(withDefaultReadOptions({
+  key: process.env.VERCEL_ENCRYPTION_KEY,
+  iv: process.env.VERCEL_ENCRYPTION_IV
 }));
+
+// Read and write my Google service account credentials
+if (data.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_JSON_BASE64) {
+  const filePath = `/tmp/${randomString(64)}.json`;
+  writeFileSync(
+    filePath,
+    Buffer.from(data.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_JSON_BASE64, 'base64')
+  );
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = filePath;
+}
 ```
 
-### The author's use case
+### An Example
 
 See the [example](example/prisma-app) for an illustration for how the package is designed to be used.
 
 ## Caveats
 
-- At the time of writing this, I'm using Remix. If you are using another framework that uses a different build system 
-  you encounter a situation where the smuggler data is pruned from the final build (maybe in the case of Next.js and 
-  their use of [nft](https://github.com/vercel/nft)).
+ - At the time of writing this, I'm using Remix (which uses esbuild). If you are using another framework that uses a 
+   different build system you encounter a situation where the smuggler data is pruned from the final build (maybe in the 
+   case of Next.js and their use of [nft](https://github.com/vercel/nft)).
 
 ## TODO
 

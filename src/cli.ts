@@ -44,6 +44,10 @@ interface GenerateOptions extends Options {
   prepare: boolean;
 }
 
+interface ReadOptions extends Options {
+  contents: boolean;
+}
+
 const debugLogger = debug('smuggler:cli');
 
 async function writeDataFile(
@@ -265,6 +269,18 @@ async function intermediateFileExists(location: string): Promise<boolean> {
   return true;
 }
 
+function summarizeContents(data: Variables): Variables {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (value) {
+        return [key, `<length ${value.length}>`];
+      } else {
+        return [key, `<undefined>`];
+      }
+    })
+  );
+}
+
 async function prepare(options: PrepareOptions) {
   debugLogger('Loading dotenv from %s', options.env || '<default>');
   dotenv.config({ path: options.env });
@@ -301,7 +317,7 @@ async function generate(options: GenerateOptions) {
   await generateBuildFile(config);
 }
 
-async function read(options: GenerateOptions) {
+async function read(options: ReadOptions) {
   debugLogger('Loading dotenv from %s', options.env || '<default>');
   dotenv.config({ path: options.env });
 
@@ -314,20 +330,16 @@ async function read(options: GenerateOptions) {
   }
 
   const intermediateFilePath = resolve(config.intermediateLocation, DATA_FILENAME);
+  const decrypted = JSON.parse(
+    createTransform(
+      'decrypt',
+      getCryptographicParameters(config)
+    )(await readFile(intermediateFilePath)).toString('utf-8')
+  );
+  const data = options.contents ? decrypted : summarizeContents(decrypted);
 
   console.debug(`Reading ${intermediateFilePath}`);
-  console.log(
-    JSON.stringify(
-      JSON.parse(
-        createTransform(
-          'decrypt',
-          getCryptographicParameters(config)
-        )(await readFile(intermediateFilePath)).toString('utf-8')
-      ),
-      null,
-      2
-    )
-  );
+  console.log(JSON.stringify(data, null, 2));
 }
 
 function attachBaseOptions(command: Command) {
@@ -361,6 +373,7 @@ attachBaseOptions(program.command('generate'))
   .action(generate);
 
 attachBaseOptions(program.command('read'))
+  .option('--contents', 'Display the contents of each variable.', false)
   .description('Read a prepared smuggler file')
   .action(read);
 
