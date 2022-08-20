@@ -301,6 +301,35 @@ async function generate(options: GenerateOptions) {
   await generateBuildFile(config);
 }
 
+async function read(options: GenerateOptions) {
+  debugLogger('Loading dotenv from %s', options.env || '<default>');
+  dotenv.config({ path: options.env });
+
+  const config = await readConfig(options.config);
+
+  if (!(await intermediateFileExists(config.intermediateLocation))) {
+    debugLogger('Intermediate files do not exist: %s', config.intermediateLocation);
+    console.error('Intermediate file does not exist. Aborting.');
+    throw new Error('no intermediate file');
+  }
+
+  const intermediateFilePath = resolve(config.intermediateLocation, DATA_FILENAME);
+
+  console.debug(`Reading ${intermediateFilePath}`);
+  console.log(
+    JSON.stringify(
+      JSON.parse(
+        createTransform(
+          'decrypt',
+          getCryptographicParameters(config)
+        )(await readFile(intermediateFilePath)).toString('utf-8')
+      ),
+      null,
+      2
+    )
+  );
+}
+
 function attachBaseOptions(command: Command) {
   command.option('--config', 'The smuggler config file to use.', resolve('.smuggler.json'));
 
@@ -330,5 +359,9 @@ attachBaseOptions(program.command('generate'))
     'Generate the encrypted data, if it is not staged, and inject it into your application.'
   )
   .action(generate);
+
+attachBaseOptions(program.command('read'))
+  .description('Read a prepared smuggler file')
+  .action(read);
 
 program.parse();
