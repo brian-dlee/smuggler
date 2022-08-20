@@ -84,7 +84,7 @@ export async function getFilesAsSecrets(
               if (value) {
                 return [key, (await readFile(value)).toString('base64')];
               } else {
-                return [key, ''];
+                throw new Error(`smuggler variable not defined: ${key}`);
               }
             })(s.variable || s.name, env[s.name]);
         }
