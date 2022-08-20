@@ -3,7 +3,7 @@
   "repository": {
     "url": "https://github.com/brian-dlee/smuggler"
   },
-  "version": "0.2.0",
+  "version": "0.2.1-dev.0",
   "description": "Smuggle large configuration variables into Vercel deployments in an encrypted format.",
   "main": "./dist/index.js",
   "bin": {

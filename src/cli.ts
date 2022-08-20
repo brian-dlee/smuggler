@@ -12,14 +12,22 @@ import {
   getDefaultBuildLocation,
   getDefaultIntermediateLocation,
 } from './crypto';
-import { extractSecrets, mappers, Variables } from './secrets';
+import {
+  asFileSecret,
+  extractSecrets,
+  FileSecret,
+  getFilesAsSecrets,
+  mappers,
+  Variables,
+} from './secrets';
 import { resolve, resolveResourceFile } from './path';
 import { DATA_FILENAME, DEFAULT_ALGORITHM, LOADER_FILENAME } from './constants';
 
 interface SmugglerConfig {
   encryptionKeyEnvironmentVariable: string;
   encryptionIVEnvironmentVariable: string;
-  includeVariablePrefix: string;
+  includeVariablePrefix: string | undefined;
+  includeFiles: FileSecret[] | undefined;
   intermediateLocation: string;
   buildLocation: string;
 }
@@ -121,6 +129,7 @@ async function readConfig(path: string): Promise<SmugglerConfig> {
     encryptionKeyEnvironmentVariable,
     encryptionIVEnvironmentVariable,
     includeVariablePrefix,
+    includeFiles,
     intermediateLocation,
     buildLocation,
   } = JSON.parse(await readFile(path, { encoding: 'utf-8' }));
@@ -133,14 +142,33 @@ async function readConfig(path: string): Promise<SmugglerConfig> {
     throw new Error('No encryptionIVEnvironmentVariable defined');
   }
 
-  if (!includeVariablePrefix) {
-    throw new Error('No includeVariablePrefix defined');
+  if (!includeVariablePrefix || !includeFiles) {
+    throw new Error(
+      'No required variable parameters are defined: includeVariablePrefix, includeFiles'
+    );
+  }
+
+  if (includeFiles) {
+    if (typeof includeFiles !== 'object' || typeof includeFiles.length !== 'number') {
+      throw new Error('Invalid includeFiles: should be an array');
+    }
+
+    if ((includeFiles as any[]).some((x) => !asFileSecret(x))) {
+      throw new Error(
+        'Invalid includeFiles: each entry should be { type: "variable", variable: string } or { type: "file", path: string, variable: string }'
+      );
+    }
+  }
+
+  if (includeVariablePrefix && typeof includeVariablePrefix !== 'string') {
+    throw new Error('Invalid includeFiles: should be a string');
   }
 
   return {
     encryptionKeyEnvironmentVariable,
     encryptionIVEnvironmentVariable,
     includeVariablePrefix,
+    includeFiles,
     intermediateLocation: intermediateLocation || getDefaultIntermediateLocation(),
     buildLocation: buildLocation || getDefaultBuildLocation(),
   };
@@ -185,11 +213,14 @@ async function generateIntermediateFile(config: SmugglerConfig, env: typeof proc
   debugLogger('Creating directory for intermediate files: %s', config.intermediateLocation);
   await mkdir(config.intermediateLocation, { recursive: true });
 
-  return writeDataFile(
-    extractSecrets(mappers.prefix(config.includeVariablePrefix), env),
-    intermediateFilePath,
-    parameters
-  );
+  const secrets: Variables = {
+    ...(config.includeVariablePrefix
+      ? extractSecrets(mappers.prefix(config.includeVariablePrefix), env)
+      : {}),
+    ...(config.includeFiles ? await getFilesAsSecrets(config.includeFiles, env) : {}),
+  };
+
+  return writeDataFile(secrets, intermediateFilePath, parameters);
 }
 
 async function generateBuildFile(config: SmugglerConfig) {
