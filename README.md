@@ -68,8 +68,8 @@ interface File {
 **type: `variable`**
 
 This is used for files that exist on disk somewhere, but their path is stored in an environment variable.
-The variable indicated by `name` will be read, the file it refers to will then be read, and it is then 
-converted to base64 before it's encrypted into the smuggler data file under the name
+The variable indicated by `name` will be read, the file it refers to will then be read, and finally it is 
+converted to base64 and encrypted into the smuggler data file under the name
 indicated by `variable`, if supplied, or `name` otherwise. If the variable is not defined, the file does not exist or 
 the file cannot be read, the operation will fail.
 
