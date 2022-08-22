@@ -146,7 +146,7 @@ async function readConfig(path: string): Promise<SmugglerConfig> {
     throw new Error('No encryptionIVEnvironmentVariable defined');
   }
 
-  if (!includeVariablePrefix || !includeFiles) {
+  if (!includeVariablePrefix && !includeFiles) {
     throw new Error(
       'No required variable parameters are defined: includeVariablePrefix, includeFiles'
     );
