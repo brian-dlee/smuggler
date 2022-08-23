@@ -1,6 +1,11 @@
 {
     "encryptionKeyEnvironmentVariable": "SMUGGLER_ENCRYPTION_KEY",
     "encryptionIVEnvironmentVariable": "SMUGGLER_ENCRYPTION_IV",
-    "includeVariablePrefix": "SMUGGLER__"
+    "includeVariablePrefix": "SMUGGLER__",
+    "includeFiles": [
+      {
+        "type": "file", "path": ".smuggler/a-fake-credentials-file.json", "variable": "CREDENTIALS_JSON_BASE64"
+      }
+    ]
   }
   

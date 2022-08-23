@@ -3,6 +3,7 @@ import { json } from '@remix-run/node';
 import { useLoaderData } from '@remix-run/react';
 import { load } from '~/lib/config.server';
 import mainStyleSheetUrl from '~/styles/main.css';
+import { btoa } from 'buffer';
 
 interface LoaderData {
   config: Record<string, string>;
@@ -34,7 +35,8 @@ export const loader: LoaderFunction = async () => {
           'SMUGGLER_ENCRYPTION_KEY',
           'SMUGGLER_ENCRYPTION_IV',
           'API_KEY',
-          'FILE_BASE64'
+          'FILE_BASE64',
+          'CREDENTIALS_JSON_BASE64'
         ),
       },
       200
@@ -58,8 +60,17 @@ export default function Index() {
         limit. It doesn't discriminate.
       </p>
       {config.FILE_BASE64 && (
-        <div className="image-container">
-          <img alt="it's been smuggled" src={`data:image/webp;base64,${config.FILE_BASE64}`} />
+        <div>
+          <h3>Exhibit 1: The smuggled image file</h3>
+          <div className="image-container">
+            <img alt="it's been smuggled" src={`data:image/webp;base64,${config.FILE_BASE64}`} />
+          </div>
+        </div>
+      )}
+      {config.CREDENTIALS_JSON_BASE64 && (
+        <div>
+          <h3>Exhibit 2: The smuggled credentials JSON</h3>
+          <pre>{JSON.stringify(JSON.parse(atob(config.CREDENTIALS_JSON_BASE64)), null, 2)}</pre>
         </div>
       )}
       <p>

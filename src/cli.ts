@@ -12,14 +12,22 @@ import {
   getDefaultBuildLocation,
   getDefaultIntermediateLocation,
 } from './crypto';
-import { extractSecrets, mappers, Variables } from './secrets';
+import {
+  asFileSecret,
+  extractSecrets,
+  FileSecret,
+  getFilesAsSecrets,
+  mappers,
+  Variables,
+} from './secrets';
 import { resolve, resolveResourceFile } from './path';
 import { DATA_FILENAME, DEFAULT_ALGORITHM, LOADER_FILENAME } from './constants';
 
 interface SmugglerConfig {
   encryptionKeyEnvironmentVariable: string;
   encryptionIVEnvironmentVariable: string;
-  includeVariablePrefix: string;
+  includeVariablePrefix: string | undefined;
+  includeFiles: FileSecret[] | undefined;
   intermediateLocation: string;
   buildLocation: string;
 }
@@ -34,6 +42,10 @@ interface PrepareOptions extends Options {}
 interface GenerateOptions extends Options {
   empty: boolean;
   prepare: boolean;
+}
+
+interface ReadOptions extends Options {
+  contents: boolean;
 }
 
 const debugLogger = debug('smuggler:cli');
@@ -121,6 +133,7 @@ async function readConfig(path: string): Promise<SmugglerConfig> {
     encryptionKeyEnvironmentVariable,
     encryptionIVEnvironmentVariable,
     includeVariablePrefix,
+    includeFiles,
     intermediateLocation,
     buildLocation,
   } = JSON.parse(await readFile(path, { encoding: 'utf-8' }));
@@ -133,14 +146,33 @@ async function readConfig(path: string): Promise<SmugglerConfig> {
     throw new Error('No encryptionIVEnvironmentVariable defined');
   }
 
-  if (!includeVariablePrefix) {
-    throw new Error('No includeVariablePrefix defined');
+  if (!includeVariablePrefix && !includeFiles) {
+    throw new Error(
+      'No required variable parameters are defined: includeVariablePrefix, includeFiles'
+    );
+  }
+
+  if (includeFiles) {
+    if (typeof includeFiles !== 'object' || typeof includeFiles.length !== 'number') {
+      throw new Error('Invalid includeFiles: should be an array');
+    }
+
+    if ((includeFiles as any[]).some((x) => !asFileSecret(x))) {
+      throw new Error(
+        'Invalid includeFiles: each entry should be { type: "variable", variable: string } or { type: "file", path: string, variable: string }'
+      );
+    }
+  }
+
+  if (includeVariablePrefix && typeof includeVariablePrefix !== 'string') {
+    throw new Error('Invalid includeFiles: should be a string');
   }
 
   return {
     encryptionKeyEnvironmentVariable,
     encryptionIVEnvironmentVariable,
     includeVariablePrefix,
+    includeFiles,
     intermediateLocation: intermediateLocation || getDefaultIntermediateLocation(),
     buildLocation: buildLocation || getDefaultBuildLocation(),
   };
@@ -185,11 +217,14 @@ async function generateIntermediateFile(config: SmugglerConfig, env: typeof proc
   debugLogger('Creating directory for intermediate files: %s', config.intermediateLocation);
   await mkdir(config.intermediateLocation, { recursive: true });
 
-  return writeDataFile(
-    extractSecrets(mappers.prefix(config.includeVariablePrefix), env),
-    intermediateFilePath,
-    parameters
-  );
+  const secrets: Variables = {
+    ...(config.includeVariablePrefix
+      ? extractSecrets(mappers.prefix(config.includeVariablePrefix), env)
+      : {}),
+    ...(config.includeFiles ? await getFilesAsSecrets(config.includeFiles, env) : {}),
+  };
+
+  return writeDataFile(secrets, intermediateFilePath, parameters);
 }
 
 async function generateBuildFile(config: SmugglerConfig) {
@@ -234,6 +269,18 @@ async function intermediateFileExists(location: string): Promise<boolean> {
   return true;
 }
 
+function summarizeContents(data: Variables): Variables {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (value) {
+        return [key, `<length ${value.length}>`];
+      } else {
+        return [key, `<undefined>`];
+      }
+    })
+  );
+}
+
 async function prepare(options: PrepareOptions) {
   debugLogger('Loading dotenv from %s', options.env || '<default>');
   dotenv.config({ path: options.env });
@@ -270,6 +317,31 @@ async function generate(options: GenerateOptions) {
   await generateBuildFile(config);
 }
 
+async function read(options: ReadOptions) {
+  debugLogger('Loading dotenv from %s', options.env || '<default>');
+  dotenv.config({ path: options.env });
+
+  const config = await readConfig(options.config);
+
+  if (!(await intermediateFileExists(config.intermediateLocation))) {
+    debugLogger('Intermediate files do not exist: %s', config.intermediateLocation);
+    console.error('Intermediate file does not exist. Aborting.');
+    throw new Error('no intermediate file');
+  }
+
+  const intermediateFilePath = resolve(config.intermediateLocation, DATA_FILENAME);
+  const decrypted = JSON.parse(
+    createTransform(
+      'decrypt',
+      getCryptographicParameters(config)
+    )(await readFile(intermediateFilePath)).toString('utf-8')
+  );
+  const data = options.contents ? decrypted : summarizeContents(decrypted);
+
+  console.debug(`Reading ${intermediateFilePath}`);
+  console.log(JSON.stringify(data, null, 2));
+}
+
 function attachBaseOptions(command: Command) {
   command.option('--config', 'The smuggler config file to use.', resolve('.smuggler.json'));
 
@@ -299,5 +371,10 @@ attachBaseOptions(program.command('generate'))
     'Generate the encrypted data, if it is not staged, and inject it into your application.'
   )
   .action(generate);
+
+attachBaseOptions(program.command('read'))
+  .option('--contents', 'Display the contents of each variable.', false)
+  .description('Read a prepared smuggler file')
+  .action(read);
 
 program.parse();
