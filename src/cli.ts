@@ -367,6 +367,17 @@ function attachBaseOptions(command: Command) {
   return command;
 }
 
+function actionErrorHandler<T>(fn: (options: T) => Promise<void>) {
+  return async (options: T) => {
+    try {
+      await fn(options);
+    } catch (e) {
+      console.error(`${e}`);
+      process.exit(1);
+    }
+  };
+}
+
 const program = new Command('smuggler');
 
 program.description('Smuggle encrypted files into your deployment');
@@ -375,7 +386,7 @@ attachBaseOptions(program.command('prepare'))
   .description(
     'Generate the encrypted data and store in an intermediate location in preparation for build.'
   )
-  .action(prepare);
+  .action(actionErrorHandler(prepare));
 
 attachBaseOptions(program.command('generate'))
   .option(
@@ -388,11 +399,11 @@ attachBaseOptions(program.command('generate'))
   .description(
     'Generate the encrypted data, if it is not staged, and inject it into your application.'
   )
-  .action(generate);
+  .action(actionErrorHandler(generate));
 
 attachBaseOptions(program.command('read'))
   .option('--contents', 'Display the contents of each variable.', false)
   .description('Read a prepared smuggler file')
-  .action(read);
+  .action(actionErrorHandler(read));
 
 program.parse();
