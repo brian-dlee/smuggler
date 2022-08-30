@@ -298,21 +298,37 @@ async function generate(options: GenerateOptions) {
   const config = await readConfig(options.config);
 
   if (options.empty) {
-    if (options.force || !(await buildFileExists(config.buildLocation))) {
-      await writeEmptyLoaderFile(resolve(config.buildLocation, LOADER_FILENAME));
+    const fileExists = await buildFileExists(config.buildLocation);
+
+    if (options.force || fileExists) {
+      const loaderFilePath = resolve(config.buildLocation, LOADER_FILENAME);
+
+      if (options.force && fileExists) {
+        debugLogger('Overwriting loader file with empty loader (--force)');
+      } else if (!fileExists) {
+        debugLogger('The required loader files do not exist: %s', config.buildLocation);
+      }
+
+      await writeEmptyLoaderFile(loaderFilePath);
     }
     return;
   }
 
-  if (options.force || !(await intermediateFileExists(config.intermediateLocation))) {
-    debugLogger('Intermediate files do not exist: %s', config.intermediateLocation);
+  const fileExists = await intermediateFileExists(config.intermediateLocation);
 
-    if (!options.prepare) {
-      console.error('Intermediate file does not exist and --no-prepare was supplied. Aborting.');
-      throw new Error('no intermediate file');
+  if ((options.force || fileExists) && options.prepare) {
+    if (options.force && fileExists) {
+      debugLogger('Overwriting intermediate files (--force)');
+    } else if (!fileExists) {
+      debugLogger('The required intermediate files do not exist: %s', config.intermediateLocation);
     }
 
     await generateIntermediateFile(config, options.empty ? {} : process.env);
+  } else if (!fileExists && !options.prepare) {
+    console.error(
+      'The required intermediate files do not exist and --no-prepare was supplied. Aborting.'
+    );
+    throw new Error('no intermediate file');
   }
 
   await generateBuildFile(config);
