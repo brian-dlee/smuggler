@@ -41,6 +41,7 @@ interface PrepareOptions extends Options {}
 
 interface GenerateOptions extends Options {
   empty: boolean;
+  force: boolean;
   prepare: boolean;
 }
 
@@ -297,21 +298,37 @@ async function generate(options: GenerateOptions) {
   const config = await readConfig(options.config);
 
   if (options.empty) {
-    if (!(await buildFileExists(config.buildLocation))) {
-      await writeEmptyLoaderFile(resolve(config.buildLocation, LOADER_FILENAME));
+    const fileExists = await buildFileExists(config.buildLocation);
+
+    if (options.force || fileExists) {
+      const loaderFilePath = resolve(config.buildLocation, LOADER_FILENAME);
+
+      if (options.force && fileExists) {
+        debugLogger('Overwriting loader file with empty loader (--force)');
+      } else if (!fileExists) {
+        debugLogger('The required loader files do not exist: %s', config.buildLocation);
+      }
+
+      await writeEmptyLoaderFile(loaderFilePath);
     }
     return;
   }
 
-  if (!(await intermediateFileExists(config.intermediateLocation))) {
-    debugLogger('Intermediate files do not exist: %s', config.intermediateLocation);
+  const fileExists = await intermediateFileExists(config.intermediateLocation);
 
-    if (!options.prepare) {
-      console.error('Intermediate file does not exist and --no-prepare was supplied. Aborting.');
-      throw new Error('no intermediate file');
+  if ((options.force || fileExists) && options.prepare) {
+    if (options.force && fileExists) {
+      debugLogger('Overwriting intermediate files (--force)');
+    } else if (!fileExists) {
+      debugLogger('The required intermediate files do not exist: %s', config.intermediateLocation);
     }
 
     await generateIntermediateFile(config, options.empty ? {} : process.env);
+  } else if (!fileExists && !options.prepare) {
+    console.error(
+      'The required intermediate files do not exist and --no-prepare was supplied. Aborting.'
+    );
+    throw new Error('no intermediate file');
   }
 
   await generateBuildFile(config);
@@ -350,6 +367,17 @@ function attachBaseOptions(command: Command) {
   return command;
 }
 
+function actionErrorHandler<T>(fn: (options: T) => Promise<void>) {
+  return async (options: T) => {
+    try {
+      await fn(options);
+    } catch (e) {
+      console.error(`${e}`);
+      process.exit(1);
+    }
+  };
+}
+
 const program = new Command('smuggler');
 
 program.description('Smuggle encrypted files into your deployment');
@@ -358,7 +386,7 @@ attachBaseOptions(program.command('prepare'))
   .description(
     'Generate the encrypted data and store in an intermediate location in preparation for build.'
   )
-  .action(prepare);
+  .action(actionErrorHandler(prepare));
 
 attachBaseOptions(program.command('generate'))
   .option(
@@ -366,15 +394,16 @@ attachBaseOptions(program.command('generate'))
     'Generate an empty library (necessary for startup when using smuggler).',
     false
   )
+  .option('--force', 'Overwrite any existing smuggler library files')
   .option('--no-prepare', 'Disable data preparation if the data does not already exist.')
   .description(
     'Generate the encrypted data, if it is not staged, and inject it into your application.'
   )
-  .action(generate);
+  .action(actionErrorHandler(generate));
 
 attachBaseOptions(program.command('read'))
   .option('--contents', 'Display the contents of each variable.', false)
   .description('Read a prepared smuggler file')
-  .action(read);
+  .action(actionErrorHandler(read));
 
 program.parse();
