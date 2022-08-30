@@ -41,6 +41,7 @@ interface PrepareOptions extends Options {}
 
 interface GenerateOptions extends Options {
   empty: boolean;
+  force: boolean;
   prepare: boolean;
 }
 
@@ -297,13 +298,13 @@ async function generate(options: GenerateOptions) {
   const config = await readConfig(options.config);
 
   if (options.empty) {
-    if (!(await buildFileExists(config.buildLocation))) {
+    if (options.force || !(await buildFileExists(config.buildLocation))) {
       await writeEmptyLoaderFile(resolve(config.buildLocation, LOADER_FILENAME));
     }
     return;
   }
 
-  if (!(await intermediateFileExists(config.intermediateLocation))) {
+  if (options.force || !(await intermediateFileExists(config.intermediateLocation))) {
     debugLogger('Intermediate files do not exist: %s', config.intermediateLocation);
 
     if (!options.prepare) {
@@ -366,6 +367,7 @@ attachBaseOptions(program.command('generate'))
     'Generate an empty library (necessary for startup when using smuggler).',
     false
   )
+  .option('--force', 'Overwrite any existing smuggler library files')
   .option('--no-prepare', 'Disable data preparation if the data does not already exist.')
   .description(
     'Generate the encrypted data, if it is not staged, and inject it into your application.'
